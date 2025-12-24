@@ -1,6 +1,11 @@
 use bevy::{prelude::*, time::Fixed};
 
-use super::{config::GameConfig, player::Player, states::AppState, weapons::EnemyFireEvent};
+use super::{
+    config::{GameConfig, GameSettings},
+    player::Player,
+    states::AppState,
+    weapons::EnemyFireEvent,
+};
 
 pub struct EnemiesPlugin;
 
@@ -29,6 +34,7 @@ pub enum EnemyKind {
     ZigZag,
     Tank,
     Chaser,
+    Boss,
 }
 
 impl EnemyKind {
@@ -39,6 +45,7 @@ impl EnemyKind {
             EnemyKind::ZigZag => 2,
             EnemyKind::Tank => 6,
             EnemyKind::Chaser => 3,
+            EnemyKind::Boss => 200,
         }
     }
 
@@ -49,6 +56,7 @@ impl EnemyKind {
             EnemyKind::ZigZag => 200,
             EnemyKind::Tank => 350,
             EnemyKind::Chaser => 250,
+            EnemyKind::Boss => 2000,
         }
     }
 
@@ -59,6 +67,7 @@ impl EnemyKind {
             EnemyKind::ZigZag => Vec2::new(40.0, 40.0),
             EnemyKind::Tank => Vec2::new(64.0, 72.0),
             EnemyKind::Chaser => Vec2::new(40.0, 56.0),
+            EnemyKind::Boss => Vec2::new(220.0, 120.0),
         }
     }
 
@@ -69,6 +78,7 @@ impl EnemyKind {
             EnemyKind::ZigZag => Color::srgb(1.0, 0.6, 0.2),
             EnemyKind::Tank => Color::srgb(0.8, 0.25, 0.15),
             EnemyKind::Chaser => Color::srgb(1.0, 0.8, 0.2),
+            EnemyKind::Boss => Color::srgb(0.95, 0.25, 0.35),
         }
     }
 }
@@ -140,7 +150,11 @@ fn reset_enemies(mut commands: Commands, query: Query<Entity, With<Enemy>>) {
     }
 }
 
-fn spawn_enemies_from_events(mut commands: Commands, mut reader: EventReader<SpawnEnemyEvent>) {
+fn spawn_enemies_from_events(
+    mut commands: Commands,
+    mut reader: EventReader<SpawnEnemyEvent>,
+    settings: Res<GameSettings>,
+) {
     for event in reader.read() {
         let size = event.kind.body_size();
         let mut entity = commands.spawn((
@@ -155,7 +169,8 @@ fn spawn_enemies_from_events(mut commands: Commands, mut reader: EventReader<Spa
             },
             Enemy {
                 kind: event.kind,
-                health: event.kind.health(),
+                health: ((event.kind.health() as f32) * settings.difficulty.enemy_health_factor())
+                    .ceil() as i32,
                 score: event.kind.score_value(),
                 damage: 1,
             },
@@ -225,6 +240,7 @@ fn enemy_fire_system(
     time: Res<Time<Fixed>>,
     mut writer: EventWriter<EnemyFireEvent>,
     player: Query<&Transform, With<Player>>,
+    settings: Res<GameSettings>,
 ) {
     let delta = time.delta();
     let player_pos = player
@@ -235,11 +251,12 @@ fn enemy_fire_system(
     for (transform, mut weapon) in &mut query {
         if weapon.timer.tick(delta).just_finished() {
             let origin = transform.translation.truncate();
+            let speed = weapon.bullet_speed * settings.difficulty.enemy_bullet_factor();
             match weapon.pattern {
                 FirePattern::StraightDown => {
                     writer.send(new_enemy_shot(
                         origin,
-                        Vec2::new(0.0, -weapon.bullet_speed),
+                        Vec2::new(0.0, -speed),
                         weapon.damage,
                     ));
                 }
@@ -248,11 +265,7 @@ fn enemy_fire_system(
                     if direction == Vec2::ZERO {
                         direction = Vec2::new(0.0, -1.0);
                     }
-                    writer.send(new_enemy_shot(
-                        origin,
-                        direction * weapon.bullet_speed,
-                        weapon.damage,
-                    ));
+                    writer.send(new_enemy_shot(origin, direction * speed, weapon.damage));
                 }
                 FirePattern::Spread { count, arc_deg } => {
                     let count = count.max(1) as usize;
@@ -261,11 +274,7 @@ fn enemy_fire_system(
                         let offset = i as f32 - half;
                         let angle = (-90.0 + offset * (arc_deg / half.max(1.0))).to_radians();
                         let dir = Vec2::new(angle.cos(), angle.sin());
-                        writer.send(new_enemy_shot(
-                            origin,
-                            dir * weapon.bullet_speed,
-                            weapon.damage,
-                        ));
+                        writer.send(new_enemy_shot(origin, dir * speed, weapon.damage));
                     }
                 }
             }
@@ -315,11 +324,12 @@ fn default_weapon(kind: EnemyKind) -> Option<EnemyWeapon> {
             pattern: FirePattern::StraightDown,
             damage: 1,
         }),
+        EnemyKind::Boss => None,
         _ => None,
     }
 }
 
-fn new_enemy_shot(origin: Vec2, velocity: Vec2, damage: u8) -> EnemyFireEvent {
+pub fn new_enemy_shot(origin: Vec2, velocity: Vec2, damage: u8) -> EnemyFireEvent {
     EnemyFireEvent {
         origin,
         velocity,

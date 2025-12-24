@@ -2,7 +2,7 @@ use std::f32::consts::FRAC_PI_2;
 
 use bevy::{prelude::*, time::Fixed};
 
-use super::{config::GameConfig, states::AppState, weapons::PlayerFireEvent};
+use super::{audio::AudioCue, config::GameConfig, states::AppState, weapons::PlayerFireEvent};
 
 pub struct PlayerPlugin;
 
@@ -213,6 +213,7 @@ fn player_fire_input(
     mut time_since_fire: Local<f32>,
     time: Res<Time<Fixed>>,
     mut writer: EventWriter<PlayerFireEvent>,
+    mut audio_writer: EventWriter<AudioCue>,
 ) {
     let Ok(transform) = query.get_single() else {
         return;
@@ -231,6 +232,7 @@ fn player_fire_input(
             transform.translation.truncate(),
             &mut writer,
         );
+        audio_writer.send(AudioCue::Shoot);
     }
 }
 

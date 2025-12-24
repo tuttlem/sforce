@@ -1,6 +1,7 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
 
 use super::{
+    audio::AudioCue,
     enemies::Enemy,
     player::{Player, PlayerDefense, PlayerStats},
     states::AppState,
@@ -29,6 +30,7 @@ fn projectile_enemy_collisions(
     bullets: Query<(Entity, &Transform, &Sprite), With<Projectile>>,
     mut enemies: Query<(Entity, &mut Enemy, &Transform, &Sprite)>,
     mut scoreboard: ResMut<ScoreBoard>,
+    mut audio_events: EventWriter<AudioCue>,
 ) {
     let mut enemy_shapes = Vec::new();
     for (entity, enemy, transform, sprite) in enemies.iter_mut() {
@@ -59,6 +61,7 @@ fn projectile_enemy_collisions(
             if enemy.health <= 0 {
                 commands.entity(entity).despawn_recursive();
                 scoreboard.score += enemy.score;
+                audio_events.send(AudioCue::Explosion);
             }
         }
     }
@@ -70,6 +73,7 @@ fn player_enemy_collisions(
     enemies: Query<(Entity, &Enemy, &Transform, &Sprite)>,
     mut stats: ResMut<PlayerStats>,
     mut next_state: ResMut<NextState<AppState>>,
+    mut audio_events: EventWriter<AudioCue>,
 ) {
     let Ok((player_transform, player_sprite, mut defense)) = player_query.get_single_mut() else {
         return;
@@ -82,7 +86,13 @@ fn player_enemy_collisions(
         let enemy_half = sprite_half_extents(enemy_sprite);
         let enemy_center = enemy_transform.translation.xy();
         if overlaps(player_center, player_half, enemy_center, enemy_half)
-            && handle_player_hit(&mut stats, &mut defense, &mut next_state, enemy.damage)
+            && handle_player_hit(
+                &mut stats,
+                &mut defense,
+                &mut next_state,
+                enemy.damage,
+                &mut audio_events,
+            )
         {
             commands.entity(enemy_entity).despawn_recursive();
             break;
@@ -96,6 +106,7 @@ fn enemy_projectile_player_collisions(
     mut player_query: Query<(&Transform, &Sprite, &mut PlayerDefense), With<Player>>,
     mut stats: ResMut<PlayerStats>,
     mut next_state: ResMut<NextState<AppState>>,
+    mut audio_events: EventWriter<AudioCue>,
 ) {
     let Ok((player_transform, player_sprite, mut defense)) = player_query.get_single_mut() else {
         return;
@@ -112,8 +123,13 @@ fn enemy_projectile_player_collisions(
             player_half,
             projectile_center,
             projectile_half,
-        ) && handle_player_hit(&mut stats, &mut defense, &mut next_state, projectile.damage)
-        {
+        ) && handle_player_hit(
+            &mut stats,
+            &mut defense,
+            &mut next_state,
+            projectile.damage,
+            &mut audio_events,
+        ) {
             commands.entity(projectile_entity).despawn_recursive();
             break;
         }
@@ -125,6 +141,7 @@ fn handle_player_hit(
     defense: &mut PlayerDefense,
     next_state: &mut NextState<AppState>,
     damage: u8,
+    audio_events: &mut EventWriter<AudioCue>,
 ) -> bool {
     if defense.invulnerability > 0.0 {
         return false;
@@ -132,6 +149,7 @@ fn handle_player_hit(
 
     let damage = damage.max(1);
     stats.lives = stats.lives.saturating_sub(damage);
+    audio_events.send(AudioCue::Hit);
     if stats.lives == 0 {
         defense.invulnerability = 0.0;
         next_state.set(AppState::GameOver);

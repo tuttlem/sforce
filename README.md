@@ -1,13 +1,13 @@
 # S-Force
 
-A top-down space fighter prototype built with Bevy. Development progresses in explicit phases per the project brief.
+A top-down space fighter built with Bevy. Development progresses in explicit phases per the project brief.
 
-## Phase 2 Status
-- Five enemy archetypes now rotate through scripted waves with deterministic spawn timing.
-- Enemies fire different projectile styles (straight, targeted, spread) and the player has lives with invulnerability frames and flashing feedback.
-- Player weapons support tiered patterns (single, twin, spread, laser) with faster fire rates unlocked via pickups.
-- Three power-ups (Spread, Rapid, Shield) drop on a timer and can be collected mid-fight.
-- HUD/Game flow preserved: Title → Gameplay → Game Over → restart, with lives/score updates.
+## Phase 3 Status
+- Parallax starfield and procedural audio tones provide continuous ambience.
+- Title screen exposes difficulty and per-channel volume controls (Tab to cycle difficulty, `-`/`+` for music, `[`/`]` for SFX).
+- Pause/resume supported at any time (`P`/`Esc`), alongside a toggleable debug overlay (`F3`) that reports FPS, entity count, and wave index.
+- Boss encounter unlocks after surviving sufficient waves; it features three attack phases, a dedicated HUD health bar, and defeating it returns the loop to the title screen.
+- Background music loops automatically; shoot, hit, explosion, pickup, and UI actions trigger synthesized SFX.
 
 ## Run Instructions
 ```sh
@@ -15,11 +15,11 @@ cargo run
 ```
 
 ## Manual Test Checklist
-1. Run `cargo run` and confirm the title screen appears; start with `Space`/`Enter`.
-2. Observe HUD score/lives in the gameplay state.
-3. Move with WASD / Arrow keys; verify the ship stays within bounds.
-4. Hold `Space` or left-click to fire; confirm weapon upgrades progress as power-ups are collected.
-5. Destroy multiple waves and observe varied enemy types (straight, sine, zigzag, tanks, chasers) and their projectile patterns.
-6. Take a hit from an enemy or projectile; lives decrement and the ship flashes while invulnerable.
-7. Collect each power-up (green Spread, blue Rapid, gold Shield) and see the corresponding weapon/shield effect.
-8. Lose all lives to reach Game Over, then press `Space`/`Enter` to return to the title screen and restart.
+1. Run `cargo run` and confirm the 1280×720 window opens on the title screen.
+2. Use `Tab`, `-`/`+`, and `[`/`]` to adjust difficulty, music, and SFX levels; verify the text reflects changes.
+3. Press `Space`/`Enter` to start the run. Observe the parallax background and HUD (score, lives, boss bar hidden).
+4. Move with WASD / Arrow keys; hold `Space` or left-click to fire. Confirm SFX volume tracks the current slider.
+5. Destroy enemies and collect the three power-ups (Spread, Rapid, Shield). Check that each alters fire patterns or shields accordingly.
+6. Press `P` (or `Esc`) during gameplay to pause, then resume with the same key. Toggle the debug overlay with `F3` and confirm FPS/entity/wave numbers update.
+7. After surviving enough waves, verify the boss spawns, its health bar becomes visible, and it executes multiple patterns before defeat returns the game to the title screen.
+8. Lose all lives to enter the Game Over overlay, then press `Enter`/`Space` to return to the title screen.

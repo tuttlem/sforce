@@ -3,6 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::Fixed};
 
 use super::{
+    audio::AudioCue,
     config::GameConfig,
     player::{Player, PlayerDefense, PlayerWeaponState},
     states::AppState,
@@ -132,6 +133,7 @@ fn collect_powerups(
     powerups: Query<(Entity, &Transform, &Sprite, &PowerUp)>,
     mut player_query: Query<(&Transform, &Sprite, &mut PlayerDefense), With<Player>>,
     mut weapon_state: ResMut<PlayerWeaponState>,
+    mut audio_events: EventWriter<AudioCue>,
 ) {
     let Ok((player_transform, player_sprite, mut defense)) = player_query.get_single_mut() else {
         return;
@@ -146,7 +148,12 @@ fn collect_powerups(
         if (player_center.x - center.x).abs() <= (player_half.x + half.x)
             && (player_center.y - center.y).abs() <= (player_half.y + half.y)
         {
-            apply_powerup(powerup.kind, &mut weapon_state, &mut defense);
+            apply_powerup(
+                powerup.kind,
+                &mut weapon_state,
+                &mut defense,
+                &mut audio_events,
+            );
             commands.entity(entity).despawn_recursive();
             break;
         }
@@ -157,10 +164,12 @@ fn apply_powerup(
     kind: PowerUpKind,
     weapon_state: &mut PlayerWeaponState,
     defense: &mut PlayerDefense,
+    audio_events: &mut EventWriter<AudioCue>,
 ) {
     match kind {
         PowerUpKind::Spread => weapon_state.advance_mode(),
         PowerUpKind::Rapid => weapon_state.boost_fire_rate(),
         PowerUpKind::Shield => defense.invulnerability = defense.invulnerability.max(3.0),
     }
+    audio_events.send(AudioCue::Pickup);
 }
