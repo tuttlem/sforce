@@ -1,3 +1,5 @@
+use std::f32::consts::FRAC_PI_2;
+
 use bevy::{prelude::*, time::Fixed};
 
 use super::{config::GameConfig, states::AppState, weapons::PlayerFireEvent};
@@ -10,11 +12,22 @@ impl Plugin for PlayerPlugin {
             .register_type::<PlayerStats>()
             .insert_resource(PlayerSettings::default())
             .register_type::<PlayerSettings>()
+            .init_resource::<PlayerWeaponState>()
+            .register_type::<PlayerWeaponState>()
             .add_systems(OnEnter(AppState::Playing), spawn_player)
             .add_systems(OnExit(AppState::Playing), despawn_player)
             .add_systems(
                 FixedUpdate,
-                (handle_player_movement, player_fire_input).run_if(in_state(AppState::Playing)),
+                (
+                    handle_player_movement,
+                    player_fire_input,
+                    tick_player_invulnerability,
+                )
+                    .run_if(in_state(AppState::Playing)),
+            )
+            .add_systems(
+                Update,
+                update_player_flash.run_if(in_state(AppState::Playing)),
             );
     }
 }
@@ -50,16 +63,88 @@ impl Default for PlayerSettings {
     }
 }
 
+#[derive(Resource, Debug, Clone, Copy, Reflect)]
+#[reflect(Resource)]
+pub struct PlayerWeaponState {
+    pub mode: WeaponMode,
+    pub fire_rate_level: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect)]
+pub enum WeaponMode {
+    Single,
+    Double,
+    Spread3,
+    Spread5,
+    Laser,
+}
+
+impl Default for PlayerWeaponState {
+    fn default() -> Self {
+        Self {
+            mode: WeaponMode::Single,
+            fire_rate_level: 0,
+        }
+    }
+}
+
+impl PlayerWeaponState {
+    pub fn reset(&mut self) {
+        self.mode = WeaponMode::Single;
+        self.fire_rate_level = 0;
+    }
+
+    pub fn current_cooldown(&self, settings: &PlayerSettings) -> f32 {
+        let mut cooldown = settings.fire_cooldown * 0.85f32.powi(self.fire_rate_level as i32);
+        if matches!(self.mode, WeaponMode::Laser) {
+            cooldown *= 0.4;
+        }
+        cooldown.clamp(0.06, 0.4)
+    }
+
+    pub fn advance_mode(&mut self) {
+        self.mode = match self.mode {
+            WeaponMode::Single => WeaponMode::Double,
+            WeaponMode::Double => WeaponMode::Spread3,
+            WeaponMode::Spread3 => WeaponMode::Spread5,
+            WeaponMode::Spread5 => WeaponMode::Laser,
+            WeaponMode::Laser => WeaponMode::Laser,
+        };
+    }
+
+    pub fn boost_fire_rate(&mut self) {
+        self.fire_rate_level = self.fire_rate_level.saturating_add(1).min(5);
+    }
+}
+
 #[derive(Component, Default)]
 pub struct Velocity(pub Vec2);
 
-fn spawn_player(mut commands: Commands, mut stats: ResMut<PlayerStats>) {
+#[derive(Component)]
+pub struct PlayerDefense {
+    pub invulnerability: f32,
+}
+
+#[derive(Component)]
+pub struct PlayerAppearance {
+    pub normal_color: Color,
+    pub hit_color: Color,
+}
+
+fn spawn_player(
+    mut commands: Commands,
+    mut stats: ResMut<PlayerStats>,
+    mut weapon_state: ResMut<PlayerWeaponState>,
+) {
     stats.lives = 3;
+    weapon_state.reset();
+    let normal_color = Color::srgb(0.4, 0.9, 1.0);
+    let hit_color = Color::srgb(1.0, 0.8, 0.8);
     commands.spawn((
         SpriteBundle {
             transform: Transform::from_xyz(0.0, -260.0, 2.0),
             sprite: Sprite {
-                color: Color::srgb(0.4, 0.9, 1.0),
+                color: normal_color,
                 custom_size: Some(Vec2::new(48.0, 64.0)),
                 ..default()
             },
@@ -67,6 +152,13 @@ fn spawn_player(mut commands: Commands, mut stats: ResMut<PlayerStats>) {
         },
         Player,
         Velocity::default(),
+        PlayerDefense {
+            invulnerability: 0.0,
+        },
+        PlayerAppearance {
+            normal_color,
+            hit_color,
+        },
     ));
 }
 
@@ -114,8 +206,10 @@ fn handle_player_movement(
 
 fn player_fire_input(
     keys: Res<ButtonInput<KeyCode>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     query: Query<&Transform, With<Player>>,
     settings: Res<PlayerSettings>,
+    weapon_state: Res<PlayerWeaponState>,
     mut time_since_fire: Local<f32>,
     time: Res<Time<Fixed>>,
     mut writer: EventWriter<PlayerFireEvent>,
@@ -126,11 +220,148 @@ fn player_fire_input(
 
     *time_since_fire += time.delta_seconds();
 
-    let shooting = keys.pressed(KeyCode::Space) || keys.pressed(KeyCode::Enter);
-    if shooting && *time_since_fire >= settings.fire_cooldown {
+    let shooting = keys.pressed(KeyCode::Space)
+        || keys.pressed(KeyCode::Enter)
+        || mouse_buttons.pressed(MouseButton::Left);
+    let cooldown = weapon_state.current_cooldown(&settings);
+    if shooting && *time_since_fire >= cooldown {
         *time_since_fire = 0.0;
-        writer.send(PlayerFireEvent {
-            origin: transform.translation.truncate(),
-        });
+        fire_weapon_pattern(
+            weapon_state.as_ref(),
+            transform.translation.truncate(),
+            &mut writer,
+        );
+    }
+}
+
+fn fire_weapon_pattern(
+    weapon_state: &PlayerWeaponState,
+    origin: Vec2,
+    writer: &mut EventWriter<PlayerFireEvent>,
+) {
+    match weapon_state.mode {
+        WeaponMode::Single => {
+            emit_shot(
+                writer,
+                origin + Vec2::new(0.0, 32.0),
+                Vec2::Y,
+                520.0,
+                Vec2::new(12.0, 24.0),
+                1.6,
+            );
+        }
+        WeaponMode::Double => {
+            emit_shot(
+                writer,
+                origin + Vec2::new(-18.0, 32.0),
+                Vec2::Y,
+                520.0,
+                Vec2::new(12.0, 24.0),
+                1.6,
+            );
+            emit_shot(
+                writer,
+                origin + Vec2::new(18.0, 32.0),
+                Vec2::Y,
+                520.0,
+                Vec2::new(12.0, 24.0),
+                1.6,
+            );
+        }
+        WeaponMode::Spread3 => {
+            for angle in [-0.2, 0.0, 0.2] {
+                emit_angle_shot(writer, origin, angle, 540.0, Vec2::new(12.0, 22.0));
+            }
+        }
+        WeaponMode::Spread5 => {
+            for angle in [-0.35, -0.18, 0.0, 0.18, 0.35] {
+                emit_angle_shot(writer, origin, angle, 560.0, Vec2::new(10.0, 22.0));
+            }
+        }
+        WeaponMode::Laser => {
+            emit_shot(
+                writer,
+                origin + Vec2::new(-8.0, 28.0),
+                Vec2::Y,
+                700.0,
+                Vec2::new(8.0, 42.0),
+                1.4,
+            );
+            emit_shot(
+                writer,
+                origin + Vec2::new(8.0, 28.0),
+                Vec2::Y,
+                700.0,
+                Vec2::new(8.0, 42.0),
+                1.4,
+            );
+        }
+    }
+}
+
+fn emit_angle_shot(
+    writer: &mut EventWriter<PlayerFireEvent>,
+    origin: Vec2,
+    offset_angle: f32,
+    speed: f32,
+    size: Vec2,
+) {
+    let angle = FRAC_PI_2 + offset_angle;
+    let direction = Vec2::from_angle(angle);
+    emit_shot(
+        writer,
+        origin + Vec2::new(0.0, 30.0),
+        direction,
+        speed,
+        size,
+        1.8,
+    );
+}
+
+fn emit_shot(
+    writer: &mut EventWriter<PlayerFireEvent>,
+    origin: Vec2,
+    direction: Vec2,
+    speed: f32,
+    size: Vec2,
+    lifetime: f32,
+) {
+    let dir = direction.normalize_or_zero();
+    if dir == Vec2::ZERO {
+        return;
+    }
+    writer.send(PlayerFireEvent {
+        origin,
+        velocity: dir * speed,
+        size,
+        lifetime,
+    });
+}
+
+fn tick_player_invulnerability(
+    mut query: Query<&mut PlayerDefense, With<Player>>,
+    time: Res<Time<Fixed>>,
+) {
+    for mut defense in &mut query {
+        defense.invulnerability = (defense.invulnerability - time.delta_seconds()).max(0.0);
+    }
+}
+
+pub fn update_player_flash(
+    mut query: Query<(&PlayerDefense, &PlayerAppearance, &mut Sprite), With<Player>>,
+    time: Res<Time>,
+) {
+    for (defense, appearance, mut sprite) in &mut query {
+        if defense.invulnerability > 0.0 {
+            let pulse =
+                (defense.invulnerability * 8.0 + time.elapsed_seconds_wrapped() * 8.0).sin();
+            sprite.color = if pulse > 0.0 {
+                appearance.hit_color
+            } else {
+                appearance.normal_color
+            };
+        } else {
+            sprite.color = appearance.normal_color;
+        }
     }
 }

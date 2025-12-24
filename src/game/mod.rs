@@ -7,6 +7,7 @@ pub mod config;
 pub mod debug;
 pub mod enemies;
 pub mod player;
+pub mod powerups;
 pub mod spawn;
 pub mod states;
 pub mod ui;
@@ -23,6 +24,7 @@ use config::ConfigPlugin;
 use debug::DebugPlugin;
 use enemies::EnemiesPlugin;
 use player::PlayerPlugin;
+use powerups::PowerupsPlugin;
 use spawn::SpawnPlugin;
 use states::StatePlugin;
 use ui::UiPlugin;
@@ -45,6 +47,7 @@ impl Plugin for GamePlugin {
             WeaponsPlugin,
             EnemiesPlugin,
             SpawnPlugin,
+            PowerupsPlugin,
             CollisionPlugin,
             BossPlugin,
             AudioPlugin,

@@ -86,7 +86,10 @@ fn spawn_title_screen(mut commands: Commands) {
                     instructions_style.clone(),
                 ),
                 TextSection::new("WASD / Arrow Keys to move\n", instructions_style.clone()),
-                TextSection::new("Hold Space to fire", instructions_style.clone()),
+                TextSection::new(
+                    "Hold Space / Left Click to fire",
+                    instructions_style.clone(),
+                ),
             ]));
         });
 }
@@ -132,12 +135,10 @@ fn spawn_hud(mut commands: Commands, stats: Res<PlayerStats>, scoreboard: Res<Sc
 fn hud_update(
     scoreboard: Res<ScoreBoard>,
     stats: Res<PlayerStats>,
-    mut queries: ParamSet<
-        (
-            Query<&mut Text, With<HudScoreText>>,
-            Query<&mut Text, With<HudLivesText>>,
-        ),
-    >,
+    mut queries: ParamSet<(
+        Query<&mut Text, With<HudScoreText>>,
+        Query<&mut Text, With<HudLivesText>>,
+    )>,
 ) {
     if scoreboard.is_changed() {
         if let Ok(mut text) = queries.p0().get_single_mut() {
