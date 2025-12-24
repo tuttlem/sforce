@@ -5,6 +5,7 @@ pub mod camera;
 pub mod collisions;
 pub mod config;
 pub mod debug;
+pub mod effects;
 pub mod enemies;
 pub mod player;
 pub mod powerups;
@@ -22,6 +23,7 @@ use camera::CameraPlugin;
 use collisions::CollisionPlugin;
 use config::ConfigPlugin;
 use debug::DebugPlugin;
+use effects::EffectsPlugin;
 use enemies::EnemiesPlugin;
 use player::PlayerPlugin;
 use powerups::PowerupsPlugin;
@@ -48,6 +50,7 @@ impl Plugin for GamePlugin {
             EnemiesPlugin,
             SpawnPlugin,
             PowerupsPlugin,
+            EffectsPlugin,
             CollisionPlugin,
             BossPlugin,
             AudioPlugin,

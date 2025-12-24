@@ -2,7 +2,8 @@ use bevy::{math::Vec3Swizzles, prelude::*};
 
 use super::{
     audio::AudioCue,
-    enemies::Enemy,
+    effects::ExplosionEvent,
+    enemies::{Enemy, EnemyKind},
     player::{Player, PlayerDefense, PlayerStats},
     states::AppState,
     ui::ScoreBoard,
@@ -31,6 +32,7 @@ fn projectile_enemy_collisions(
     mut enemies: Query<(Entity, &mut Enemy, &Transform, &Sprite)>,
     mut scoreboard: ResMut<ScoreBoard>,
     mut audio_events: EventWriter<AudioCue>,
+    mut explosion_events: EventWriter<ExplosionEvent>,
 ) {
     let mut enemy_shapes = Vec::new();
     for (entity, enemy, transform, sprite) in enemies.iter_mut() {
@@ -56,12 +58,16 @@ fn projectile_enemy_collisions(
 
     for (bullet_entity, enemy_entity) in hits {
         commands.entity(bullet_entity).despawn_recursive();
-        if let Ok((entity, mut enemy, _, _)) = enemies.get_mut(enemy_entity) {
+        if let Ok((entity, mut enemy, transform, _)) = enemies.get_mut(enemy_entity) {
             enemy.health -= 1;
             if enemy.health <= 0 {
                 commands.entity(entity).despawn_recursive();
                 scoreboard.score += enemy.score;
                 audio_events.send(AudioCue::Explosion);
+                explosion_events.send(ExplosionEvent {
+                    position: transform.translation.xy(),
+                    large: matches!(enemy.kind, EnemyKind::Tank | EnemyKind::Boss),
+                });
             }
         }
     }
@@ -74,6 +80,7 @@ fn player_enemy_collisions(
     mut stats: ResMut<PlayerStats>,
     mut next_state: ResMut<NextState<AppState>>,
     mut audio_events: EventWriter<AudioCue>,
+    mut explosion_events: EventWriter<ExplosionEvent>,
 ) {
     let Ok((player_transform, player_sprite, mut defense)) = player_query.get_single_mut() else {
         return;
@@ -95,6 +102,14 @@ fn player_enemy_collisions(
             )
         {
             commands.entity(enemy_entity).despawn_recursive();
+            explosion_events.send(ExplosionEvent {
+                position: enemy_center,
+                large: matches!(enemy.kind, EnemyKind::Tank | EnemyKind::Boss),
+            });
+            explosion_events.send(ExplosionEvent {
+                position: player_center,
+                large: true,
+            });
             break;
         }
     }
@@ -107,6 +122,7 @@ fn enemy_projectile_player_collisions(
     mut stats: ResMut<PlayerStats>,
     mut next_state: ResMut<NextState<AppState>>,
     mut audio_events: EventWriter<AudioCue>,
+    mut explosion_events: EventWriter<ExplosionEvent>,
 ) {
     let Ok((player_transform, player_sprite, mut defense)) = player_query.get_single_mut() else {
         return;
@@ -131,6 +147,10 @@ fn enemy_projectile_player_collisions(
             &mut audio_events,
         ) {
             commands.entity(projectile_entity).despawn_recursive();
+            explosion_events.send(ExplosionEvent {
+                position: player_center,
+                large: false,
+            });
             break;
         }
     }
