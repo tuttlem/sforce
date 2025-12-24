@@ -228,7 +228,8 @@ fn move_enemies(
             }
             MovementPattern::Chaser { speed, turn_rate } => {
                 transform.translation.y -= *speed * delta * 0.6;
-                let dx = (player_x - transform.translation.x).clamp(-*turn_rate, *turn_rate);
+                let desired = (player_x - transform.translation.x) * 0.2;
+                let dx = desired.clamp(-*turn_rate, *turn_rate);
                 transform.translation.x += dx * delta * 60.0;
             }
         }
