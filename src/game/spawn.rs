@@ -28,7 +28,7 @@ pub struct WaveDirector {
 impl Default for WaveDirector {
     fn default() -> Self {
         Self {
-            timer: Timer::from_seconds(2.5, TimerMode::Repeating),
+            timer: Timer::from_seconds(3.2, TimerMode::Repeating),
             wave_index: 0,
             difficulty: 1.0,
         }
@@ -37,7 +37,7 @@ impl Default for WaveDirector {
 
 fn reset_waves(mut director: ResMut<WaveDirector>) {
     director.timer.reset();
-    director.timer.set_duration(Duration::from_secs_f32(2.5));
+    director.timer.set_duration(Duration::from_secs_f32(3.2));
     director.wave_index = 0;
     director.difficulty = 1.0;
 }
@@ -58,9 +58,9 @@ fn drive_waves(
     spawn_wave(director.wave_index, director.difficulty, &mut writer);
     director.wave_index += 1;
 
-    if director.wave_index % 4 == 0 {
-        director.difficulty += 0.2;
-        let new_duration = (director.timer.duration().as_secs_f32() - 0.2).max(1.2);
+    if director.wave_index % 5 == 0 {
+        director.difficulty += 0.15;
+        let new_duration = (director.timer.duration().as_secs_f32() - 0.15).max(2.0);
         director
             .timer
             .set_duration(Duration::from_secs_f32(new_duration));
@@ -68,16 +68,17 @@ fn drive_waves(
 }
 
 fn spawn_wave(wave_index: u32, difficulty: f32, writer: &mut EventWriter<SpawnEnemyEvent>) {
-    let lanes = [-480.0, -240.0, 0.0, 240.0, 480.0];
+    let lanes = [-360.0, -180.0, 0.0, 180.0, 360.0];
+    let core_lanes: Vec<f32> = lanes.iter().copied().step_by(2).collect();
     let top = 420.0;
     let difficulty_scale = difficulty;
 
     match wave_index % 5 {
         0 => {
-            for lane in lanes {
+            for lane in &core_lanes {
                 writer.send(spawn_enemy(
                     EnemyKind::Grunt,
-                    Vec2::new(lane, top),
+                    Vec2::new(*lane, top),
                     MovementPattern::Straight {
                         speed: 160.0 * difficulty_scale,
                     },
@@ -85,30 +86,28 @@ fn spawn_wave(wave_index: u32, difficulty: f32, writer: &mut EventWriter<SpawnEn
             }
         }
         1 => {
-            for (i, lane) in lanes.iter().enumerate() {
-                if i % 2 == 0 {
-                    writer.send(spawn_enemy(
-                        EnemyKind::Sine,
-                        Vec2::new(*lane, top + 40.0),
-                        MovementPattern::Sine {
-                            speed: 140.0,
-                            amplitude: 160.0,
-                            frequency: 1.6 + difficulty_scale * 0.2,
-                            base_x: *lane,
-                        },
-                    ));
-                }
+            for lane in &core_lanes {
+                writer.send(spawn_enemy(
+                    EnemyKind::Sine,
+                    Vec2::new(*lane, top + 40.0),
+                    MovementPattern::Sine {
+                        speed: 130.0,
+                        amplitude: 140.0,
+                        frequency: 1.4 + difficulty_scale * 0.15,
+                        base_x: *lane,
+                    },
+                ));
             }
         }
         2 => {
-            for lane in lanes {
+            for lane in &core_lanes {
                 writer.send(spawn_enemy(
                     EnemyKind::ZigZag,
-                    Vec2::new(lane, top + 60.0),
+                    Vec2::new(*lane, top + 60.0),
                     MovementPattern::ZigZag {
                         speed: 150.0,
                         horizontal_speed: 180.0,
-                        direction: if lane >= 0.0 { -1.0 } else { 1.0 },
+                        direction: if *lane >= 0.0 { -1.0 } else { 1.0 },
                     },
                 ));
             }
@@ -116,24 +115,24 @@ fn spawn_wave(wave_index: u32, difficulty: f32, writer: &mut EventWriter<SpawnEn
         3 => {
             writer.send(spawn_enemy(
                 EnemyKind::Tank,
-                Vec2::new(-220.0, top + 100.0),
+                Vec2::new(-200.0, top + 100.0),
                 MovementPattern::Tank {
                     speed: 90.0 * (0.8 + difficulty_scale * 0.1),
                 },
             ));
             writer.send(spawn_enemy(
                 EnemyKind::Tank,
-                Vec2::new(220.0, top + 100.0),
+                Vec2::new(200.0, top + 100.0),
                 MovementPattern::Tank {
                     speed: 90.0 * (0.8 + difficulty_scale * 0.1),
                 },
             ));
         }
         _ => {
-            for lane in lanes {
+            for lane in &core_lanes {
                 writer.send(spawn_enemy(
                     EnemyKind::Chaser,
-                    Vec2::new(lane * 0.5, top + 20.0),
+                    Vec2::new(*lane * 0.5, top + 20.0),
                     MovementPattern::Chaser {
                         speed: 180.0,
                         turn_rate: 120.0 + difficulty_scale * 20.0,
