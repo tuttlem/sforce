@@ -1,10 +1,11 @@
 use std::time::Duration;
 
-use bevy::{prelude::*, time::Fixed};
+use bevy::{prelude::*, sprite::TextureAtlas, time::Fixed};
 
 use super::{
     audio::AudioCue,
     config::GameConfig,
+    effects::ExplosionAssets,
     player::{Player, PlayerDefense, PlayerWeaponState},
     states::AppState,
 };
@@ -20,7 +21,8 @@ impl Plugin for PowerupsPlugin {
                 FixedUpdate,
                 (spawn_powerup_tick, move_powerups, collect_powerups)
                     .run_if(in_state(AppState::Playing)),
-            );
+            )
+            .add_systems(Update, animate_powerups.run_if(in_state(AppState::Playing)));
     }
 }
 
@@ -32,6 +34,13 @@ pub struct PowerUp {
 #[derive(Component)]
 struct PowerUpMotion {
     speed: f32,
+}
+
+#[derive(Component)]
+struct PowerUpAnimation {
+    sequence_index: usize,
+    frame: usize,
+    timer: Timer,
 }
 
 #[derive(Clone, Copy)]
@@ -76,6 +85,7 @@ fn spawn_powerup_tick(
     mut scheduler: ResMut<PowerupScheduler>,
     time: Res<Time<Fixed>>,
     config: Res<GameConfig>,
+    effects: Res<ExplosionAssets>,
 ) {
     if !scheduler.timer.tick(time.delta()).just_finished() {
         return;
@@ -92,14 +102,16 @@ fn spawn_powerup_tick(
     };
     scheduler.next_kind += 1;
 
-    let color = match kind {
-        PowerUpKind::Spread => Color::srgb(0.6, 1.0, 0.4),
-        PowerUpKind::Rapid => Color::srgb(0.4, 0.8, 1.0),
-        PowerUpKind::Shield => Color::srgb(1.0, 0.9, 0.4),
+    let (color, sequence_index) = match kind {
+        PowerUpKind::Spread => (Color::srgb(0.7, 0.4, 1.0), 0),
+        PowerUpKind::Rapid => (Color::srgb(0.4, 0.8, 1.0), 1),
+        PowerUpKind::Shield => (Color::srgb(0.5, 1.0, 0.6), 2),
     };
+    let frames = &effects.powerup_sequences[sequence_index];
 
     commands.spawn((
         SpriteBundle {
+            texture: effects.texture.clone(),
             transform: Transform::from_xyz(lane, config.logical_height * 0.5 + 80.0, 1.0),
             sprite: Sprite {
                 color,
@@ -108,8 +120,17 @@ fn spawn_powerup_tick(
             },
             ..default()
         },
+        TextureAtlas {
+            layout: effects.layout.clone(),
+            index: frames[0],
+        },
         PowerUp { kind },
         PowerUpMotion { speed: 120.0 },
+        PowerUpAnimation {
+            sequence_index,
+            frame: 0,
+            timer: Timer::from_seconds(0.08, TimerMode::Repeating),
+        },
     ));
 }
 
@@ -156,6 +177,21 @@ fn collect_powerups(
             );
             commands.entity(entity).despawn_recursive();
             break;
+        }
+    }
+}
+
+fn animate_powerups(
+    time: Res<Time>,
+    assets: Res<ExplosionAssets>,
+    mut query: Query<(&mut PowerUpAnimation, &mut TextureAtlas)>,
+) {
+    for (mut anim, mut atlas) in &mut query {
+        if anim.timer.tick(time.delta()).just_finished() {
+            let frames =
+                &assets.powerup_sequences[anim.sequence_index % assets.powerup_sequences.len()];
+            anim.frame = (anim.frame + 1) % frames.len();
+            atlas.index = frames[anim.frame];
         }
     }
 }

@@ -71,17 +71,6 @@ impl EnemyKind {
             EnemyKind::Boss => Vec2::new(220.0, 120.0),
         }
     }
-
-    pub fn color(self) -> Color {
-        match self {
-            EnemyKind::Grunt => Color::srgb(1.0, 0.35, 0.4),
-            EnemyKind::Sine => Color::srgb(0.95, 0.2, 0.7),
-            EnemyKind::ZigZag => Color::srgb(1.0, 0.6, 0.2),
-            EnemyKind::Tank => Color::srgb(0.8, 0.25, 0.15),
-            EnemyKind::Chaser => Color::srgb(1.0, 0.8, 0.2),
-            EnemyKind::Boss => Color::srgb(0.95, 0.25, 0.35),
-        }
-    }
 }
 
 #[derive(Component)]

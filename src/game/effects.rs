@@ -22,7 +22,9 @@ impl Plugin for EffectsPlugin {
 pub struct ExplosionAssets {
     pub texture: Handle<Image>,
     pub layout: Handle<TextureAtlasLayout>,
-    pub sequences: Vec<Vec<usize>>,
+    pub explosion_sequences: Vec<Vec<usize>>,
+    pub bullet_sequence: Vec<usize>,
+    pub powerup_sequences: Vec<Vec<usize>>,
 }
 
 #[derive(Event, Debug, Clone, Copy)]
@@ -47,6 +49,12 @@ const EXPLOSION_SETS: [[usize; 6]; 4] = [
     [102, 103, 104, 105, 106, 107],
     [138, 139, 140, 141, 142, 143],
 ];
+const BULLET_ROW: usize = 8;
+const BULLET_START_COLUMN: usize = 30;
+const BULLET_FRAME_COUNT: usize = 6;
+const POWERUP_ROWS: [usize; 3] = [3, 7, 9];
+const POWERUP_START_COLUMN: usize = 19;
+const POWERUP_FRAME_COUNT: usize = 4;
 
 fn load_explosion_assets(
     mut commands: Commands,
@@ -56,10 +64,24 @@ fn load_explosion_assets(
     let texture = asset_server.load("images/explosions.png");
     let layout = TextureAtlasLayout::from_grid(FRAME_SIZE, SHEET_COLUMNS, SHEET_ROWS, None, None);
     let layout_handle = layouts.add(layout);
+    let explosion_sequences = EXPLOSION_SETS.iter().map(|seq| seq.to_vec()).collect();
+    let bullet_sequence = (0..BULLET_FRAME_COUNT)
+        .map(|i| BULLET_ROW * SHEET_COLUMNS as usize + BULLET_START_COLUMN + i)
+        .collect();
+    let powerup_sequences = POWERUP_ROWS
+        .iter()
+        .map(|row| {
+            (0..POWERUP_FRAME_COUNT)
+                .map(|i| row * SHEET_COLUMNS as usize + POWERUP_START_COLUMN + i)
+                .collect()
+        })
+        .collect();
     commands.insert_resource(ExplosionAssets {
         texture,
         layout: layout_handle,
-        sequences: EXPLOSION_SETS.iter().map(|seq| seq.to_vec()).collect(),
+        explosion_sequences,
+        bullet_sequence,
+        powerup_sequences,
     });
 }
 
@@ -74,11 +96,11 @@ fn spawn_explosions(
 
     for event in events.read() {
         let sequence_index = if event.large {
-            assets.sequences.len() - 1
+            assets.explosion_sequences.len() - 1
         } else {
-            rand_hash(event.position) as usize % assets.sequences.len()
+            rand_hash(event.position) as usize % assets.explosion_sequences.len()
         };
-        let frames = &assets.sequences[sequence_index];
+        let frames = &assets.explosion_sequences[sequence_index];
         let scale = if event.large { 4.5 } else { 2.8 };
         commands.spawn((
             SpriteBundle {
@@ -113,7 +135,7 @@ fn animate_explosions(
     for (entity, mut anim, mut atlas) in &mut query {
         if anim.timer.tick(time.delta()).just_finished() {
             anim.frame += 1;
-            let frames = &assets.sequences[anim.sequence];
+            let frames = &assets.explosion_sequences[anim.sequence];
             if anim.frame >= frames.len() {
                 commands.entity(entity).despawn_recursive();
             } else {

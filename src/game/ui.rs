@@ -27,10 +27,7 @@ impl Plugin for UiPlugin {
             .add_systems(OnEnter(AppState::Playing), spawn_hud)
             .add_systems(OnExit(AppState::Playing), cleanup_ui::<HudRoot>)
             .add_systems(Update, hud_update.run_if(in_state(AppState::Playing)))
-            .add_systems(
-                Update,
-                boss_health_bar_update.run_if(in_state(AppState::Playing)),
-            )
+            .add_systems(Update, boss_health_bar_update)
             .add_systems(Update, pause_input.run_if(in_state(AppState::Playing)))
             .add_systems(OnEnter(AppState::Paused), spawn_pause_overlay)
             .add_systems(OnExit(AppState::Paused), cleanup_ui::<PauseOverlay>)

@@ -1,6 +1,6 @@
-use bevy::{prelude::*, time::Fixed};
+use bevy::{prelude::*, sprite::TextureAtlas, time::Fixed};
 
-use super::{config::GameConfig, states::AppState};
+use super::{config::GameConfig, effects::ExplosionAssets, states::AppState};
 
 pub struct WeaponsPlugin;
 
@@ -26,6 +26,10 @@ impl Plugin for WeaponsPlugin {
                         .chain(),
                 )
                     .run_if(in_state(AppState::Playing)),
+            )
+            .add_systems(
+                Update,
+                animate_projectile_sprites.run_if(in_state(AppState::Playing)),
             );
     }
 }
@@ -61,22 +65,49 @@ pub struct EnemyProjectile {
     pub damage: u8,
 }
 
-fn spawn_player_projectiles(mut commands: Commands, mut reader: EventReader<PlayerFireEvent>) {
+#[derive(Component)]
+struct ProjectileAnimation {
+    frames: Vec<usize>,
+    frame: usize,
+    timer: Timer,
+}
+
+impl ProjectileAnimation {
+    fn new(frames: &[usize], frame_time: f32) -> Self {
+        Self {
+            frames: frames.to_vec(),
+            frame: 0,
+            timer: Timer::from_seconds(frame_time, TimerMode::Repeating),
+        }
+    }
+}
+
+fn spawn_player_projectiles(
+    mut commands: Commands,
+    mut reader: EventReader<PlayerFireEvent>,
+    assets: Res<ExplosionAssets>,
+) {
     for event in reader.read() {
         commands.spawn((
             SpriteBundle {
+                texture: assets.texture.clone(),
                 transform: Transform::from_xyz(event.origin.x, event.origin.y, 1.0),
                 sprite: Sprite {
-                    color: Color::srgb(1.0, 0.9, 0.2),
-                    custom_size: Some(event.size),
+                    color: Color::WHITE,
+                    custom_size: Some(event.size * 1.6),
                     ..default()
                 },
                 ..default()
+            },
+            TextureAtlas {
+                layout: assets.layout.clone(),
+                index: assets.bullet_sequence[0],
             },
             Projectile {
                 velocity: event.velocity,
                 lifetime: event.lifetime,
             },
+            ProjectileAnimation::new(&assets.bullet_sequence, 0.04),
         ));
     }
 }
@@ -109,23 +140,33 @@ fn expire_player_projectiles(
     }
 }
 
-fn spawn_enemy_projectiles(mut commands: Commands, mut reader: EventReader<EnemyFireEvent>) {
+fn spawn_enemy_projectiles(
+    mut commands: Commands,
+    mut reader: EventReader<EnemyFireEvent>,
+    assets: Res<ExplosionAssets>,
+) {
     for event in reader.read() {
         commands.spawn((
             SpriteBundle {
+                texture: assets.texture.clone(),
                 transform: Transform::from_xyz(event.origin.x, event.origin.y, 1.0),
                 sprite: Sprite {
                     color: event.color,
-                    custom_size: Some(event.size),
+                    custom_size: Some(event.size * 1.6),
                     ..default()
                 },
                 ..default()
+            },
+            TextureAtlas {
+                layout: assets.layout.clone(),
+                index: assets.bullet_sequence[0],
             },
             EnemyProjectile {
                 velocity: event.velocity,
                 lifetime: event.lifetime,
                 damage: event.damage,
             },
+            ProjectileAnimation::new(&assets.bullet_sequence, 0.05),
         ));
     }
 }
@@ -168,5 +209,17 @@ fn cleanup_projectiles(
     }
     for entity in &enemy_query {
         commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn animate_projectile_sprites(
+    time: Res<Time>,
+    mut query: Query<(&mut ProjectileAnimation, &mut TextureAtlas)>,
+) {
+    for (mut anim, mut atlas) in &mut query {
+        if anim.timer.tick(time.delta()).just_finished() {
+            anim.frame = (anim.frame + 1) % anim.frames.len();
+            atlas.index = anim.frames[anim.frame];
+        }
     }
 }
