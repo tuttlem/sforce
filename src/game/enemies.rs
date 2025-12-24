@@ -1,8 +1,9 @@
-use bevy::{prelude::*, time::Fixed};
+use bevy::{prelude::*, sprite::TextureAtlas, time::Fixed};
 
 use super::{
     config::{GameConfig, GameSettings},
     player::Player,
+    ship_sprites::{ShipAnimation, ShipSpriteAssets, ShipSpriteId},
     states::AppState,
     weapons::EnemyFireEvent,
 };
@@ -154,18 +155,27 @@ fn spawn_enemies_from_events(
     mut commands: Commands,
     mut reader: EventReader<SpawnEnemyEvent>,
     settings: Res<GameSettings>,
+    sprites: Res<ShipSpriteAssets>,
 ) {
     for event in reader.read() {
         let size = event.kind.body_size();
+        let (ship_id, row) = enemy_sprite_info(event.kind);
+        let sprite_data = sprites.data(ship_id);
+        let sequence = sprites.sequence(ship_id, row);
         let mut entity = commands.spawn((
             SpriteBundle {
+                texture: sprite_data.texture.clone(),
                 transform: Transform::from_xyz(event.position.x, event.position.y, 1.0),
                 sprite: Sprite {
-                    color: event.kind.color(),
-                    custom_size: Some(size),
+                    color: Color::WHITE,
+                    custom_size: Some(size.max(sprite_data.frame_size * sprite_data.scale)),
                     ..default()
                 },
                 ..default()
+            },
+            TextureAtlas {
+                layout: sprite_data.layout.clone(),
+                index: sequence[0],
             },
             Enemy {
                 kind: event.kind,
@@ -178,6 +188,7 @@ fn spawn_enemies_from_events(
                 pattern: event.movement.clone(),
                 elapsed: 0.0,
             },
+            ShipAnimation::new(ship_id, row, 0.1),
         ));
 
         if let Some(weapon) = default_weapon(event.kind) {
@@ -338,5 +349,16 @@ pub fn new_enemy_shot(origin: Vec2, velocity: Vec2, damage: u8) -> EnemyFireEven
         color: Color::srgb(1.0, 0.45, 0.2),
         lifetime: 3.0,
         damage,
+    }
+}
+
+fn enemy_sprite_info(kind: EnemyKind) -> (ShipSpriteId, usize) {
+    match kind {
+        EnemyKind::Grunt => (ShipSpriteId::Grunt, 0),
+        EnemyKind::Sine => (ShipSpriteId::Sine, 0),
+        EnemyKind::ZigZag => (ShipSpriteId::ZigZag, 0),
+        EnemyKind::Tank => (ShipSpriteId::Tank, 0),
+        EnemyKind::Chaser => (ShipSpriteId::Chaser, 0),
+        EnemyKind::Boss => (ShipSpriteId::Boss, 0),
     }
 }

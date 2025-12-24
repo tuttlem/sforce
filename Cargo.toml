@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 bevy = { version = "0.14", features = ["wav"] }
+image = "0.24"

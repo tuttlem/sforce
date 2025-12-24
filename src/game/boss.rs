@@ -1,12 +1,13 @@
 use std::f32::consts::{PI, TAU};
 
-use bevy::{prelude::*, time::Fixed};
+use bevy::{prelude::*, sprite::TextureAtlas, time::Fixed};
 
 use super::{
     audio::AudioCue,
     config::{GameConfig, GameSettings},
     enemies::{Enemy, EnemyKind, new_enemy_shot},
     player::Player,
+    ship_sprites::{ShipAnimation, ShipSpriteAssets, ShipSpriteId},
     spawn::WaveDirector,
     states::AppState,
     ui::ScoreBoard,
@@ -80,22 +81,30 @@ fn trigger_boss_spawn(
     mut state: ResMut<BossState>,
     mut director: ResMut<WaveDirector>,
     config: Res<GameConfig>,
+    sprites: Res<ShipSpriteAssets>,
 ) {
     if state.active || scoreboard.score < state.spawn_score {
         return;
     }
 
     let max_health = 200.0;
+    let sprite_data = sprites.data(ShipSpriteId::Boss);
+    let sequence = sprites.sequence(ShipSpriteId::Boss, 0);
     let entity = commands
         .spawn((
             SpriteBundle {
+                texture: sprite_data.texture.clone(),
                 transform: Transform::from_xyz(0.0, config.logical_height * 0.3, 6.0),
                 sprite: Sprite {
-                    color: EnemyKind::Boss.color(),
-                    custom_size: Some(EnemyKind::Boss.body_size()),
+                    color: Color::WHITE,
+                    custom_size: Some(sprite_data.frame_size * sprite_data.scale),
                     ..default()
                 },
                 ..default()
+            },
+            TextureAtlas {
+                layout: sprite_data.layout.clone(),
+                index: sequence[0],
             },
             Enemy {
                 kind: EnemyKind::Boss,
@@ -109,6 +118,7 @@ fn trigger_boss_spawn(
                 elapsed: 0.0,
                 fire_timer: 0.8,
             },
+            ShipAnimation::new(ShipSpriteId::Boss, 0, 0.12),
         ))
         .id();
 

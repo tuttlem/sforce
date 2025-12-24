@@ -9,6 +9,7 @@ pub mod effects;
 pub mod enemies;
 pub mod player;
 pub mod powerups;
+pub mod ship_sprites;
 pub mod spawn;
 pub mod states;
 pub mod ui;
@@ -27,6 +28,7 @@ use effects::EffectsPlugin;
 use enemies::EnemiesPlugin;
 use player::PlayerPlugin;
 use powerups::PowerupsPlugin;
+use ship_sprites::ShipSpritePlugin;
 use spawn::SpawnPlugin;
 use states::StatePlugin;
 use ui::UiPlugin;
@@ -41,12 +43,15 @@ impl Plugin for GamePlugin {
         app.add_plugins((
             ConfigPlugin,
             StatePlugin,
+            ShipSpritePlugin,
             DebugPlugin,
             CameraPlugin,
             BackgroundPlugin,
             UiPlugin,
             PlayerPlugin,
             WeaponsPlugin,
+        ))
+        .add_plugins((
             EnemiesPlugin,
             SpawnPlugin,
             PowerupsPlugin,

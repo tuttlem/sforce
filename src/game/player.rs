@@ -2,7 +2,13 @@ use std::f32::consts::FRAC_PI_2;
 
 use bevy::{prelude::*, time::Fixed};
 
-use super::{audio::AudioCue, config::GameConfig, states::AppState, weapons::PlayerFireEvent};
+use super::{
+    audio::AudioCue,
+    config::GameConfig,
+    ship_sprites::{ShipAnimation, ShipSpriteAssets, ShipSpriteId},
+    states::AppState,
+    weapons::PlayerFireEvent,
+};
 
 pub struct PlayerPlugin;
 
@@ -135,20 +141,28 @@ fn spawn_player(
     mut commands: Commands,
     mut stats: ResMut<PlayerStats>,
     mut weapon_state: ResMut<PlayerWeaponState>,
+    sprites: Res<ShipSpriteAssets>,
 ) {
     stats.lives = 3;
     weapon_state.reset();
-    let normal_color = Color::srgb(0.4, 0.9, 1.0);
-    let hit_color = Color::srgb(1.0, 0.8, 0.8);
+    let normal_color = Color::WHITE;
+    let hit_color = Color::srgb(1.0, 0.6, 0.6);
+    let sprite_data = sprites.data(ShipSpriteId::Player);
+    let sequence = sprites.sequence(ShipSpriteId::Player, 0);
     commands.spawn((
         SpriteBundle {
+            texture: sprite_data.texture.clone(),
             transform: Transform::from_xyz(0.0, -260.0, 2.0),
             sprite: Sprite {
                 color: normal_color,
-                custom_size: Some(Vec2::new(48.0, 64.0)),
+                custom_size: Some(sprite_data.frame_size * sprite_data.scale),
                 ..default()
             },
             ..default()
+        },
+        TextureAtlas {
+            layout: sprite_data.layout.clone(),
+            index: sequence[0],
         },
         Player,
         Velocity::default(),
@@ -159,6 +173,7 @@ fn spawn_player(
             normal_color,
             hit_color,
         },
+        ShipAnimation::new(ShipSpriteId::Player, 0, 0.08),
     ));
 }
 

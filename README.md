@@ -8,6 +8,7 @@ A top-down space fighter built with Bevy. Development progresses in explicit pha
 - Pause/resume supported at any time (`P`/`Esc`), alongside a toggleable debug overlay (`F3`) that reports FPS, entity count, and wave index.
 - Boss encounter unlocks after surviving sufficient waves; it features three attack phases, a dedicated HUD health bar, and defeating it returns the loop to the title screen.
 - Background music loops automatically; shoot, hit, explosion, pickup, and UI actions trigger synthesized SFX.
+- Ships and enemies now use atlas-driven sprites from the `tinyShip*` sheets (player uses tinyShip3, enemies mix several sizes, and the boss uses tinyShip20) with animated thrusters and appropriately scaled collision bounds.
 
 ## Run Instructions
 ```sh
