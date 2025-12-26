@@ -5,10 +5,21 @@ use bevy::{prelude::*, time::Fixed};
 use super::{
     config::{Difficulty, GameSettings},
     enemies::{EnemyKind, MovementPattern, SpawnEnemyEvent},
+    powerups::PowerUpKind,
     states::AppState,
 };
 
-const BASE_INTERVAL: f32 = 3.2;
+const BASE_INTERVAL: f32 = 3.6;
+const WAVE_INTERVAL_STEP: f32 = 0.12;
+const MIN_INTERVAL_FACTOR: f32 = 0.75;
+const POWERUP_PLAN: [Option<PowerUpKind>; 6] = [
+    Some(PowerUpKind::Rapid),
+    Some(PowerUpKind::Shield),
+    Some(PowerUpKind::Spread),
+    Some(PowerUpKind::Health),
+    None,
+    Some(PowerUpKind::Invincibility),
+];
 
 pub struct SpawnPlugin;
 
@@ -77,8 +88,8 @@ fn drive_waves(
     director.difficulty += 0.05;
 
     if director.wave_index % 5 == 0 {
-        let target = director.timer.duration().as_secs_f32() - 0.15;
-        let min_interval = base_interval(settings.difficulty) * 0.6;
+        let target = director.timer.duration().as_secs_f32() - WAVE_INTERVAL_STEP;
+        let min_interval = base_interval(settings.difficulty) * MIN_INTERVAL_FACTOR;
         let new_duration = target.max(min_interval);
         director
             .timer
@@ -96,21 +107,27 @@ fn spawn_wave(
     let core_lanes: Vec<f32> = lanes.iter().copied().step_by(2).collect();
     let top = 420.0;
     let difficulty_scale = difficulty * setting.enemy_health_factor();
+    let planned_drop = planned_drop_for_wave(wave_index);
 
     match wave_index % 5 {
         0 => {
-            for lane in &core_lanes {
+            let center = core_lanes.len() / 2;
+            for (i, lane) in core_lanes.iter().enumerate() {
+                let drop = planned_drop.filter(|_| i == center);
                 writer.send(spawn_enemy(
                     EnemyKind::Grunt,
                     Vec2::new(*lane, top),
                     MovementPattern::Straight {
                         speed: 160.0 * difficulty_scale,
                     },
+                    drop,
                 ));
             }
         }
         1 => {
-            for lane in &core_lanes {
+            let center = core_lanes.len() / 2;
+            for (i, lane) in core_lanes.iter().enumerate() {
+                let drop = planned_drop.filter(|_| i == center);
                 writer.send(spawn_enemy(
                     EnemyKind::Sine,
                     Vec2::new(*lane, top + 40.0),
@@ -120,11 +137,14 @@ fn spawn_wave(
                         frequency: 1.4 + difficulty_scale * 0.15,
                         base_x: *lane,
                     },
+                    drop,
                 ));
             }
         }
         2 => {
-            for lane in &core_lanes {
+            let center = core_lanes.len() / 2;
+            for (i, lane) in core_lanes.iter().enumerate() {
+                let drop = planned_drop.filter(|_| i == center);
                 writer.send(spawn_enemy(
                     EnemyKind::ZigZag,
                     Vec2::new(*lane, top + 60.0),
@@ -133,16 +153,19 @@ fn spawn_wave(
                         horizontal_speed: 180.0,
                         direction: if *lane >= 0.0 { -1.0 } else { 1.0 },
                     },
+                    drop,
                 ));
             }
         }
         3 => {
+            let drop = planned_drop;
             writer.send(spawn_enemy(
                 EnemyKind::Tank,
                 Vec2::new(-200.0, top + 100.0),
                 MovementPattern::Tank {
                     speed: 90.0 * (0.8 + difficulty_scale * 0.1),
                 },
+                drop,
             ));
             writer.send(spawn_enemy(
                 EnemyKind::Tank,
@@ -150,10 +173,13 @@ fn spawn_wave(
                 MovementPattern::Tank {
                     speed: 90.0 * (0.8 + difficulty_scale * 0.1),
                 },
+                None,
             ));
         }
         _ => {
-            for lane in &core_lanes {
+            let center = core_lanes.len() / 2;
+            for (i, lane) in core_lanes.iter().enumerate() {
+                let drop = planned_drop.filter(|_| i == center);
                 writer.send(spawn_enemy(
                     EnemyKind::Chaser,
                     Vec2::new(*lane * 0.5, top + 20.0),
@@ -161,18 +187,29 @@ fn spawn_wave(
                         speed: 180.0,
                         turn_rate: 120.0 + difficulty_scale * 20.0,
                     },
+                    drop,
                 ));
             }
         }
     };
 }
 
-fn spawn_enemy(kind: EnemyKind, position: Vec2, movement: MovementPattern) -> SpawnEnemyEvent {
+fn spawn_enemy(
+    kind: EnemyKind,
+    position: Vec2,
+    movement: MovementPattern,
+    powerup: Option<PowerUpKind>,
+) -> SpawnEnemyEvent {
     SpawnEnemyEvent {
         kind,
         position,
         movement,
+        powerup,
     }
+}
+
+fn planned_drop_for_wave(wave_index: u32) -> Option<PowerUpKind> {
+    POWERUP_PLAN[wave_index as usize % POWERUP_PLAN.len()]
 }
 
 fn base_interval(difficulty: Difficulty) -> f32 {

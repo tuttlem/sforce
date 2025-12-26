@@ -110,13 +110,13 @@ fn trigger_boss_spawn(
                 kind: EnemyKind::Boss,
                 health: max_health as i32,
                 score: EnemyKind::Boss.score_value(),
-                damage: 2,
+                damage: 1,
             },
             BossControl {
                 phase: BossPhase::Entry,
                 direction: 1.0,
                 elapsed: 0.0,
-                fire_timer: 0.8,
+                fire_timer: 1.0,
             },
             ShipAnimation::new(ShipSpriteId::Boss, 0, 0.12),
         ))
@@ -201,9 +201,9 @@ fn boss_movement_and_attacks(
             settings.difficulty.enemy_bullet_factor(),
         );
         control.fire_timer = match control.phase {
-            BossPhase::Entry => 0.9,
-            BossPhase::Second => 0.6,
-            BossPhase::Final => 0.35,
+            BossPhase::Entry => 1.1,
+            BossPhase::Second => 0.75,
+            BossPhase::Final => 0.5,
         };
     }
 }

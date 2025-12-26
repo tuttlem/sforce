@@ -10,6 +10,12 @@ use super::{
     weapons::PlayerFireEvent,
 };
 
+#[derive(Event, Debug, Clone, Copy)]
+pub struct PlayerLifeLostEvent;
+
+pub const PLAYER_HIT_INVULNERABILITY: f32 = 1.6;
+const PLAYER_INVULNERABILITY_FLICKER_HZ: f32 = 14.0;
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -20,6 +26,7 @@ impl Plugin for PlayerPlugin {
             .register_type::<PlayerSettings>()
             .init_resource::<PlayerWeaponState>()
             .register_type::<PlayerWeaponState>()
+            .add_event::<PlayerLifeLostEvent>()
             .add_systems(OnEnter(AppState::Playing), spawn_player)
             .add_systems(OnExit(AppState::Playing), despawn_player)
             .add_systems(
@@ -28,6 +35,7 @@ impl Plugin for PlayerPlugin {
                     handle_player_movement,
                     player_fire_input,
                     tick_player_invulnerability,
+                    handle_life_loss_respawn,
                 )
                     .run_if(in_state(AppState::Playing)),
             )
@@ -44,12 +52,37 @@ pub struct Player;
 #[derive(Resource, Debug, Clone, Copy, Reflect)]
 #[reflect(Resource)]
 pub struct PlayerStats {
+    pub health: u8,
+    pub max_health: u8,
     pub lives: u8,
+    pub max_lives: u8,
 }
 
 impl Default for PlayerStats {
     fn default() -> Self {
-        Self { lives: 3 }
+        Self {
+            health: 5,
+            max_health: 5,
+            lives: 3,
+            max_lives: 3,
+        }
+    }
+}
+
+impl PlayerStats {
+    pub fn reset(&mut self) {
+        self.max_health = 5;
+        self.health = self.max_health;
+        self.max_lives = 3;
+        self.lives = self.max_lives;
+    }
+
+    pub fn health_fraction(&self) -> f32 {
+        if self.max_health == 0 {
+            0.0
+        } else {
+            self.health as f32 / self.max_health as f32
+        }
     }
 }
 
@@ -143,7 +176,7 @@ fn spawn_player(
     mut weapon_state: ResMut<PlayerWeaponState>,
     sprites: Res<ShipSpriteAssets>,
 ) {
-    stats.lives = 3;
+    stats.reset();
     weapon_state.reset();
     let normal_color = Color::WHITE;
     let hit_color = Color::srgb(1.0, 0.6, 0.6);
@@ -364,21 +397,51 @@ fn tick_player_invulnerability(
     }
 }
 
+fn handle_life_loss_respawn(
+    mut events: EventReader<PlayerLifeLostEvent>,
+    mut query: Query<(&mut Transform, &mut Velocity), With<Player>>,
+) {
+    if events.is_empty() {
+        return;
+    }
+    for _ in events.read() {
+        if let Ok((mut transform, mut velocity)) = query.get_single_mut() {
+            transform.translation.x = 0.0;
+            transform.translation.y = -260.0;
+            velocity.0 = Vec2::ZERO;
+        }
+    }
+}
+
 pub fn update_player_flash(
-    mut query: Query<(&PlayerDefense, &PlayerAppearance, &mut Sprite), With<Player>>,
+    mut query: Query<
+        (
+            &PlayerDefense,
+            &PlayerAppearance,
+            &mut Sprite,
+            &mut Visibility,
+        ),
+        With<Player>,
+    >,
     time: Res<Time>,
 ) {
-    for (defense, appearance, mut sprite) in &mut query {
+    let flicker_frequency = PLAYER_INVULNERABILITY_FLICKER_HZ.max(1.0);
+    for (defense, appearance, mut sprite, mut visibility) in &mut query {
         if defense.invulnerability > 0.0 {
-            let pulse =
-                (defense.invulnerability * 8.0 + time.elapsed_seconds_wrapped() * 8.0).sin();
-            sprite.color = if pulse > 0.0 {
+            let flicker_on = (time.elapsed_seconds_wrapped() * flicker_frequency).fract() > 0.5;
+            sprite.color = if flicker_on {
                 appearance.hit_color
             } else {
                 appearance.normal_color
             };
+            *visibility = if flicker_on {
+                Visibility::Inherited
+            } else {
+                Visibility::Hidden
+            };
         } else {
             sprite.color = appearance.normal_color;
+            *visibility = Visibility::Inherited;
         }
     }
 }

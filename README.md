@@ -22,8 +22,8 @@ S-Force is a vertical space shooter built with Rust and Bevy 0.14. Pilot a nimbl
 ## Gameplay Features
 - **Enemy variety** – Grunts, sine-wave flyers, zig-zag strafers, tanky gunships, and aggressive chasers each carry unique health, hitboxes, and movement curves. Waves mix these archetypes and gradually tighten spawn intervals to ramp difficulty.
 - **Boss encounter** – Once the score threshold is met, a capital ship enters the arena, locking wave spawns and cycling through entry, second, and final phases with distinct movement and bullet spreads. A HUD health bar tracks progress.
-- **Player arsenals** – Weapon pickups unlock double shots, spread volleys (3- and 5-way), and dual lasers. Rapid-fire cores shorten cooldowns, while shield pickups extend temporary invulnerability.
-- **HUD + meta systems** – Score and remaining lives are shown on an in-game HUD, while pause/game-over overlays keep the action readable. A debug overlay (`F3`) displays FPS, entity count, and current wave for tuning.
+- **Player arsenals & boosts** – Weapon pickups unlock double shots, spread volleys (3- and 5-way), and dual lasers. Rapid-fire cores shorten cooldowns, shield cores extend short invulnerability, hull patches restore a full hit, and rare disruptors grant a 10-second invincibility window. The pilot flies with three lives, each worth five hull segments, and power-ups drop from specific enemies once per wave so you always know when backup is inbound.
+- **HUD + meta systems** – Score and a segmented hull bar are shown on an in-game HUD, while pause/game-over overlays keep the action readable. A debug overlay (`F3`) displays FPS, entity count, and current wave for tuning.
 - **Audio + effects** – Music, UI bleeps, shots, hits, explosions, and pickups are generated procedurally at startup, ensuring a tiny audio footprint. Explosions, bullets, and power-ups share a unified atlas to keep draw calls low.
 - **Camera & background polish** – The camera maintains a fixed logical resolution (1280×720) and clamps gameplay to the viewable area. Background stars scroll at two speeds for depth.
 

@@ -32,8 +32,14 @@ impl Plugin for UiPlugin {
             .add_systems(OnEnter(AppState::Paused), spawn_pause_overlay)
             .add_systems(OnExit(AppState::Paused), cleanup_ui::<PauseOverlay>)
             .add_systems(Update, resume_input.run_if(in_state(AppState::Paused)))
-            .add_systems(OnEnter(AppState::GameOver), spawn_game_over_screen)
-            .add_systems(OnExit(AppState::GameOver), cleanup_ui::<GameOverScreen>)
+            .add_systems(
+                OnEnter(AppState::GameOver),
+                (spawn_game_over_screen, init_game_over_cooldown),
+            )
+            .add_systems(
+                OnExit(AppState::GameOver),
+                (cleanup_ui::<GameOverScreen>, clear_game_over_cooldown),
+            )
             .add_systems(Update, game_over_input.run_if(in_state(AppState::GameOver)));
     }
 }
@@ -66,6 +72,12 @@ struct HudScoreText;
 struct HudLivesText;
 
 #[derive(Component)]
+struct HudHealthFill;
+
+#[derive(Component)]
+struct HudHealthBar;
+
+#[derive(Component)]
 struct GameOverScreen;
 
 #[derive(Component)]
@@ -76,6 +88,9 @@ struct BossHealthBar;
 
 #[derive(Component)]
 struct BossHealthFill;
+
+#[derive(Resource)]
+struct GameOverCooldown(Timer);
 
 fn reset_scoreboard(mut scoreboard: ResMut<ScoreBoard>) {
     scoreboard.score = 0;
@@ -178,6 +193,38 @@ fn spawn_hud(mut commands: Commands, stats: Res<PlayerStats>, scoreboard: Res<Sc
                 TextBundle::from_section(format!("Lives: {}", stats.lives), label_style.clone()),
                 HudLivesText,
             ));
+            parent.spawn(TextBundle::from_section(
+                "Hull Integrity",
+                label_style.clone(),
+            ));
+            parent
+                .spawn((
+                    NodeBundle {
+                        style: Style {
+                            width: Val::Px(220.0),
+                            height: Val::Px(18.0),
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        background_color: BackgroundColor(Color::srgba(0.15, 0.25, 0.3, 0.8)),
+                        ..default()
+                    },
+                    HudHealthFill,
+                ))
+                .with_children(|parent| {
+                    parent.spawn((
+                        NodeBundle {
+                            style: Style {
+                                width: Val::Percent(stats.health_fraction() * 100.0),
+                                height: Val::Percent(100.0),
+                                ..default()
+                            },
+                            background_color: BackgroundColor(Color::srgb(0.3, 0.85, 0.4)),
+                            ..default()
+                        },
+                        HudHealthBar,
+                    ));
+                });
         });
 
     let mut boss_bar = NodeBundle {
@@ -218,6 +265,7 @@ fn hud_update(
     stats: Res<PlayerStats>,
     mut queries: ParamSet<(
         Query<&mut Text, With<HudScoreText>>,
+        Query<&mut Style, With<HudHealthBar>>,
         Query<&mut Text, With<HudLivesText>>,
     )>,
 ) {
@@ -227,7 +275,10 @@ fn hud_update(
         }
     }
     if stats.is_changed() {
-        if let Ok(mut text) = queries.p1().get_single_mut() {
+        if let Ok(mut style) = queries.p1().get_single_mut() {
+            style.width = Val::Percent((stats.health_fraction() * 100.0).max(0.0));
+        }
+        if let Ok(mut text) = queries.p2().get_single_mut() {
             text.sections[0].value = format!("Lives: {}", stats.lives);
         }
     }
@@ -274,6 +325,14 @@ fn spawn_game_over_screen(mut commands: Commands, scoreboard: Res<ScoreBoard>) {
                 info_style,
             ));
         });
+}
+
+fn init_game_over_cooldown(mut commands: Commands) {
+    commands.insert_resource(GameOverCooldown(Timer::from_seconds(0.6, TimerMode::Once)));
+}
+
+fn clear_game_over_cooldown(mut commands: Commands) {
+    commands.remove_resource::<GameOverCooldown>();
 }
 
 fn spawn_pause_overlay(mut commands: Commands) {
@@ -345,9 +404,16 @@ fn resume_input(
 fn game_over_input(
     mut next_state: ResMut<NextState<AppState>>,
     keys: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut cooldown: Option<ResMut<GameOverCooldown>>,
     mut audio: EventWriter<AudioCue>,
 ) {
-    if keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space) {
+    if let Some(cooldown) = cooldown.as_deref_mut() {
+        if !cooldown.0.tick(time.delta()).finished() {
+            return;
+        }
+    }
+    if keys.just_pressed(KeyCode::Enter) {
         next_state.set(AppState::Title);
         audio.send(AudioCue::UiSelect);
     }
@@ -420,10 +486,12 @@ fn difficulty_label(difficulty: Difficulty) -> &'static str {
 
 fn boss_health_bar_update(
     boss_state: Res<BossState>,
+    app_state: Res<State<AppState>>,
     mut visibility_query: Query<&mut Visibility, With<BossHealthBar>>,
     mut fill_query: Query<&mut Style, With<BossHealthFill>>,
 ) {
-    let active = boss_state.active && boss_state.max_health > 0.0;
+    let playing = matches!(app_state.get(), AppState::Playing);
+    let active = playing && boss_state.active && boss_state.max_health > 0.0;
     if let Ok(mut visibility) = visibility_query.get_single_mut() {
         *visibility = if active {
             Visibility::Visible

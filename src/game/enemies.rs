@@ -3,6 +3,7 @@ use bevy::{prelude::*, sprite::TextureAtlas, time::Fixed};
 use super::{
     config::{GameConfig, GameSettings},
     player::Player,
+    powerups::{DropsPowerUp, PowerUpKind},
     ship_sprites::{ShipAnimation, ShipSpriteAssets, ShipSpriteId},
     states::AppState,
     weapons::EnemyFireEvent,
@@ -132,6 +133,7 @@ pub struct SpawnEnemyEvent {
     pub kind: EnemyKind,
     pub position: Vec2,
     pub movement: MovementPattern,
+    pub powerup: Option<PowerUpKind>,
 }
 
 fn reset_enemies(mut commands: Commands, query: Query<Entity, With<Enemy>>) {
@@ -180,6 +182,9 @@ fn spawn_enemies_from_events(
             ShipAnimation::new(ship_id, row, 0.1),
         ));
 
+        if let Some(powerup) = event.powerup {
+            entity.insert(DropsPowerUp { kind: powerup });
+        }
         if let Some(weapon) = default_weapon(event.kind) {
             entity.insert(weapon);
         }
@@ -305,7 +310,7 @@ fn cleanup_enemies(mut commands: Commands, query: Query<Entity, With<Enemy>>) {
 fn default_weapon(kind: EnemyKind) -> Option<EnemyWeapon> {
     match kind {
         EnemyKind::Tank => Some(EnemyWeapon {
-            timer: Timer::from_seconds(1.6, TimerMode::Repeating),
+            timer: Timer::from_seconds(2.2, TimerMode::Repeating),
             bullet_speed: 220.0,
             pattern: FirePattern::Spread {
                 count: 3,
@@ -314,13 +319,13 @@ fn default_weapon(kind: EnemyKind) -> Option<EnemyWeapon> {
             damage: 1,
         }),
         EnemyKind::Chaser => Some(EnemyWeapon {
-            timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+            timer: Timer::from_seconds(1.5, TimerMode::Repeating),
             bullet_speed: 260.0,
             pattern: FirePattern::TargetPlayer,
             damage: 1,
         }),
         EnemyKind::Sine => Some(EnemyWeapon {
-            timer: Timer::from_seconds(2.0, TimerMode::Repeating),
+            timer: Timer::from_seconds(2.6, TimerMode::Repeating),
             bullet_speed: 200.0,
             pattern: FirePattern::StraightDown,
             damage: 1,

@@ -4,7 +4,8 @@ use super::{
     audio::AudioCue,
     effects::ExplosionEvent,
     enemies::{Enemy, EnemyKind},
-    player::{Player, PlayerDefense, PlayerStats},
+    player::{PLAYER_HIT_INVULNERABILITY, Player, PlayerDefense, PlayerLifeLostEvent, PlayerStats},
+    powerups::{DropsPowerUp, SpawnPowerUpEvent},
     states::AppState,
     ui::ScoreBoard,
     weapons::{EnemyProjectile, Projectile},
@@ -29,13 +30,20 @@ impl Plugin for CollisionPlugin {
 fn projectile_enemy_collisions(
     mut commands: Commands,
     bullets: Query<(Entity, &Transform, &Sprite), With<Projectile>>,
-    mut enemies: Query<(Entity, &mut Enemy, &Transform, &Sprite)>,
+    mut enemies: Query<(
+        Entity,
+        &mut Enemy,
+        &Transform,
+        &Sprite,
+        Option<&DropsPowerUp>,
+    )>,
     mut scoreboard: ResMut<ScoreBoard>,
     mut audio_events: EventWriter<AudioCue>,
     mut explosion_events: EventWriter<ExplosionEvent>,
+    mut powerup_events: EventWriter<SpawnPowerUpEvent>,
 ) {
     let mut enemy_shapes = Vec::new();
-    for (entity, enemy, transform, sprite) in enemies.iter_mut() {
+    for (entity, enemy, transform, sprite, _) in enemies.iter_mut() {
         enemy_shapes.push((
             entity,
             enemy.kind,
@@ -58,12 +66,18 @@ fn projectile_enemy_collisions(
 
     for (bullet_entity, enemy_entity) in hits {
         commands.entity(bullet_entity).despawn_recursive();
-        if let Ok((entity, mut enemy, transform, _)) = enemies.get_mut(enemy_entity) {
+        if let Ok((entity, mut enemy, transform, _, drop)) = enemies.get_mut(enemy_entity) {
             enemy.health -= 1;
             if enemy.health <= 0 {
                 commands.entity(entity).despawn_recursive();
                 scoreboard.score += enemy.score;
                 audio_events.send(AudioCue::Explosion);
+                if let Some(drop) = drop {
+                    powerup_events.send(SpawnPowerUpEvent {
+                        position: transform.translation.xy(),
+                        kind: drop.kind,
+                    });
+                }
                 explosion_events.send(ExplosionEvent {
                     position: transform.translation.xy(),
                     large: matches!(enemy.kind, EnemyKind::Tank | EnemyKind::Boss),
@@ -76,11 +90,13 @@ fn projectile_enemy_collisions(
 fn player_enemy_collisions(
     mut commands: Commands,
     mut player_query: Query<(&Transform, &Sprite, &mut PlayerDefense), With<Player>>,
-    enemies: Query<(Entity, &Enemy, &Transform, &Sprite)>,
+    enemies: Query<(Entity, &Enemy, &Transform, &Sprite, Option<&DropsPowerUp>)>,
     mut stats: ResMut<PlayerStats>,
     mut next_state: ResMut<NextState<AppState>>,
     mut audio_events: EventWriter<AudioCue>,
     mut explosion_events: EventWriter<ExplosionEvent>,
+    mut powerup_events: EventWriter<SpawnPowerUpEvent>,
+    mut life_events: EventWriter<PlayerLifeLostEvent>,
 ) {
     let Ok((player_transform, player_sprite, mut defense)) = player_query.get_single_mut() else {
         return;
@@ -89,7 +105,7 @@ fn player_enemy_collisions(
     let player_half = sprite_half_extents(player_sprite);
     let player_center = player_transform.translation.xy();
 
-    for (enemy_entity, enemy, enemy_transform, enemy_sprite) in &enemies {
+    for (enemy_entity, enemy, enemy_transform, enemy_sprite, drop) in &enemies {
         let enemy_half = sprite_half_extents(enemy_sprite);
         let enemy_center = enemy_transform.translation.xy();
         if overlaps(player_center, player_half, enemy_center, enemy_half)
@@ -99,9 +115,16 @@ fn player_enemy_collisions(
                 &mut next_state,
                 enemy.damage,
                 &mut audio_events,
+                &mut life_events,
             )
         {
             commands.entity(enemy_entity).despawn_recursive();
+            if let Some(drop) = drop {
+                powerup_events.send(SpawnPowerUpEvent {
+                    position: enemy_center,
+                    kind: drop.kind,
+                });
+            }
             explosion_events.send(ExplosionEvent {
                 position: enemy_center,
                 large: matches!(enemy.kind, EnemyKind::Tank | EnemyKind::Boss),
@@ -123,6 +146,7 @@ fn enemy_projectile_player_collisions(
     mut next_state: ResMut<NextState<AppState>>,
     mut audio_events: EventWriter<AudioCue>,
     mut explosion_events: EventWriter<ExplosionEvent>,
+    mut life_events: EventWriter<PlayerLifeLostEvent>,
 ) {
     let Ok((player_transform, player_sprite, mut defense)) = player_query.get_single_mut() else {
         return;
@@ -145,6 +169,7 @@ fn enemy_projectile_player_collisions(
             &mut next_state,
             projectile.damage,
             &mut audio_events,
+            &mut life_events,
         ) {
             commands.entity(projectile_entity).despawn_recursive();
             explosion_events.send(ExplosionEvent {
@@ -162,19 +187,28 @@ fn handle_player_hit(
     next_state: &mut NextState<AppState>,
     damage: u8,
     audio_events: &mut EventWriter<AudioCue>,
+    life_events: &mut EventWriter<PlayerLifeLostEvent>,
 ) -> bool {
     if defense.invulnerability > 0.0 {
         return false;
     }
 
     let damage = damage.max(1);
-    stats.lives = stats.lives.saturating_sub(damage);
+    stats.health = stats.health.saturating_sub(damage);
     audio_events.send(AudioCue::Hit);
-    if stats.lives == 0 {
-        defense.invulnerability = 0.0;
-        next_state.set(AppState::GameOver);
+    if stats.health == 0 {
+        if stats.lives > 1 {
+            stats.lives -= 1;
+            stats.health = stats.max_health;
+            defense.invulnerability = PLAYER_HIT_INVULNERABILITY;
+            life_events.send(PlayerLifeLostEvent);
+        } else {
+            stats.lives = 0;
+            defense.invulnerability = 0.0;
+            next_state.set(AppState::GameOver);
+        }
     } else {
-        defense.invulnerability = 1.5;
+        defense.invulnerability = PLAYER_HIT_INVULNERABILITY;
     }
     true
 }
