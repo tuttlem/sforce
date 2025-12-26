@@ -3,7 +3,7 @@ mod util;
 
 use bevy::{
     prelude::*,
-    window::{PresentMode, Window, WindowPlugin, WindowResolution},
+    window::{PresentMode, PrimaryWindow, Window, WindowMode, WindowPlugin, WindowResolution},
 };
 use game::GamePlugin;
 
@@ -20,6 +20,25 @@ fn main() {
             }),
             ..default()
         }))
+        .add_systems(Update, toggle_fullscreen_shortcut)
         .add_plugins(GamePlugin)
         .run();
+}
+
+fn toggle_fullscreen_shortcut(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut windows: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    let ctrl_pressed = keys.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]);
+    if !ctrl_pressed || !keys.just_pressed(KeyCode::Enter) {
+        return;
+    }
+
+    if let Ok(mut window) = windows.get_single_mut() {
+        window.mode = if window.mode == WindowMode::Windowed {
+            WindowMode::BorderlessFullscreen
+        } else {
+            WindowMode::Windowed
+        };
+    }
 }
