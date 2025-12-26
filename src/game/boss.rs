@@ -1,6 +1,6 @@
 use std::f32::consts::{PI, TAU};
 
-use bevy::{prelude::*, sprite::TextureAtlas, time::Fixed};
+use bevy::{log::info, prelude::*, sprite::TextureAtlas, time::Fixed};
 
 use super::{
     audio::AudioCue,
@@ -201,9 +201,9 @@ fn boss_movement_and_attacks(
             settings.difficulty.enemy_bullet_factor(),
         );
         control.fire_timer = match control.phase {
-            BossPhase::Entry => 1.1,
-            BossPhase::Second => 0.75,
-            BossPhase::Final => 0.5,
+            BossPhase::Entry => 1.35,
+            BossPhase::Second => 0.95,
+            BossPhase::Final => 0.7,
         };
     }
 }
@@ -216,27 +216,27 @@ fn fire_boss_pattern(
 ) {
     match phase {
         BossPhase::Entry => {
-            for offset in -2..=2 {
-                let dir = Vec2::new(offset as f32 * 0.2, -1.0).normalize_or_zero();
-                writer.send(new_enemy_shot(origin, dir * 260.0 * difficulty_factor, 1));
+            for offset in -1..=1 {
+                let dir = Vec2::new(offset as f32 * 0.18, -1.0).normalize_or_zero();
+                writer.send(new_enemy_shot(origin, dir * 220.0 * difficulty_factor, 1));
             }
         }
         BossPhase::Second => {
             for i in 0..3 {
-                let angle = -PI / 2.0 + (i as f32 - 1.0) * 0.15;
+                let angle = -PI / 2.0 + (i as f32 - 1.0) * 0.12;
                 let dir = Vec2::new(angle.cos(), angle.sin());
                 writer.send(new_enemy_shot(
                     origin + Vec2::new(0.0, -20.0),
-                    dir * 320.0 * difficulty_factor,
+                    dir * 260.0 * difficulty_factor,
                     1,
                 ));
             }
         }
         BossPhase::Final => {
-            for i in 0..8 {
-                let angle = i as f32 / 8.0 * TAU;
+            for i in 0..6 {
+                let angle = i as f32 / 6.0 * TAU;
                 let dir = Vec2::new(angle.cos(), angle.sin());
-                writer.send(new_enemy_shot(origin, dir * 280.0 * difficulty_factor, 1));
+                writer.send(new_enemy_shot(origin, dir * 230.0 * difficulty_factor, 1));
             }
         }
     }
@@ -261,6 +261,7 @@ fn boss_health_tracker(
                 state.health = 0.0;
                 state.max_health = 0.0;
                 director.boss_active = false;
+                info!("Boss defeated or despawned; returning to Title");
                 audio.send(AudioCue::UiSelect);
                 next_state.set(AppState::Title);
             }

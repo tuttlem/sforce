@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use bevy::{prelude::*, time::Fixed};
+use bevy::{log::info, prelude::*, time::Fixed};
 
 use super::{
     audio::AudioCue,
@@ -409,6 +409,7 @@ fn handle_life_loss_respawn(
             transform.translation.x = 0.0;
             transform.translation.y = -260.0;
             velocity.0 = Vec2::ZERO;
+            info!("Player respawned after life loss");
         }
     }
 }
