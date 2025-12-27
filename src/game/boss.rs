@@ -8,7 +8,7 @@ use super::{
     enemies::{Enemy, EnemyKind, new_enemy_shot},
     player::Player,
     ship_sprites::{ShipAnimation, ShipSpriteAssets, ShipSpriteId},
-    spawn::WaveDirector,
+    spawn::{Storyboard, WaveDirector, advance_level},
     states::AppState,
     ui::ScoreBoard,
     weapons::EnemyFireEvent,
@@ -246,7 +246,8 @@ fn boss_health_tracker(
     mut state: ResMut<BossState>,
     boss_query: Query<(&Enemy, Entity), With<BossControl>>,
     mut director: ResMut<WaveDirector>,
-    mut next_state: ResMut<NextState<AppState>>,
+    storyboard: Res<Storyboard>,
+    settings: Res<GameSettings>,
     mut audio: EventWriter<AudioCue>,
 ) {
     match boss_query.get_single() {
@@ -261,9 +262,13 @@ fn boss_health_tracker(
                 state.health = 0.0;
                 state.max_health = 0.0;
                 director.boss_active = false;
-                info!("Boss defeated or despawned; returning to Title");
+                state.spawn_score += 2600;
+                advance_level(&mut director, &storyboard, &settings);
+                info!(
+                    "Boss defeated; advancing to level {}",
+                    director.level_index + 1
+                );
                 audio.send(AudioCue::UiSelect);
-                next_state.set(AppState::Title);
             }
         }
     }

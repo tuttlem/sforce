@@ -63,6 +63,15 @@ S-Force is a vertical space shooter built with Rust and Bevy 0.14. Pilot a nimbl
 - `assets/screenshot.png` is the gameplay capture used above.
 - Audio content is synthesised procedurally at runtime; no external `.wav` files are stored in the repo. All assets remain in-tree so the game can run without additional downloads.
 
+## Enemy Storyboard
+- `assets/storyboard.json` drives the endless-wave “storyboard”. Each level entry contains an ordered list of waves, and each wave declares:
+  - `delay_seconds` – how long to wait after the previous wave before spawns begin (this duration is scaled by the selected difficulty’s spawn-factor at runtime).
+  - `pattern` – either `lane` (spawn the same enemy across multiple `lanes`) or `fixed` (spawn a list of individually positioned enemies).
+  - `movement` – a typed object (`straight`, `sine`, `zig_zag`, `tank`, or `chaser`) with optional tuning fields such as `speed`, `amplitude`, or `turn_rate`.
+  - `powerup` – optional per-wave (lane) or per-entry (fixed) power-up drops; specify `powerup_lane_index` for lane formations to pick which ship carries the drop.
+- Levels are played sequentially: once you’ve cleared at least one full cycle of the current level and toppled the boss, the director advances to the next entry (wrapping to the first after the last) and resets its pacing. Until then, waves loop so you can keep building score for the boss trigger.
+- Edit the JSON while iterating to reorder enemies, tweak delays, or move power-ups without touching Rust code. The game loads this file on startup; restart after editing to apply changes.
+
 ## Troubleshooting & Tips
 - If the window opens but remains black, ensure your graphics drivers are up to date and try running with `WGPU_BACKEND=vulkan`/`metal`/`dx12` set explicitly.
 - Performance dips usually indicate debug/release mismatch. Double-check you are running `cargo run --release`.

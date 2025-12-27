@@ -1,0 +1,365 @@
+{
+  "levels": [
+    {
+      "name": "Default",
+      "waves": [
+        {
+          "delay_seconds": 3.6,
+          "pattern": "lane",
+          "enemy": "grunt",
+          "lanes": [-360.0, 0.0, 360.0],
+          "y_offset": 0.0,
+          "movement": {
+            "type": "straight",
+            "speed": 160.0,
+            "scale_with_difficulty": true
+          },
+          "powerup_lane_index": 1,
+          "powerup": "rapid"
+        },
+        {
+          "delay_seconds": 3.4,
+          "pattern": "lane",
+          "enemy": "sine",
+          "lanes": [-360.0, 0.0, 360.0],
+          "y_offset": 40.0,
+          "movement": {
+            "type": "sine",
+            "speed": 130.0,
+            "amplitude": 140.0,
+            "frequency": 1.4,
+            "frequency_gain": 0.15
+          },
+          "powerup_lane_index": 1,
+          "powerup": "shield"
+        },
+        {
+          "delay_seconds": 3.2,
+          "pattern": "lane",
+          "enemy": "zig_zag",
+          "lanes": [-360.0, 0.0, 360.0],
+          "y_offset": 60.0,
+          "movement": {
+            "type": "zig_zag",
+            "speed": 150.0,
+            "horizontal_speed": 180.0
+          },
+          "powerup_lane_index": 1,
+          "powerup": "spread"
+        },
+        {
+          "delay_seconds": 3.8,
+          "pattern": "fixed",
+          "enemies": [
+            {
+              "enemy": "tank",
+              "position": { "x": -200.0, "y": 520.0 },
+              "movement": {
+                "type": "tank",
+                "speed": 90.0,
+                "base_factor": 0.8,
+                "difficulty_factor": 0.1
+              },
+              "powerup": "health"
+            },
+            {
+              "enemy": "tank",
+              "position": { "x": 200.0, "y": 520.0 },
+              "movement": {
+                "type": "tank",
+                "speed": 90.0,
+                "base_factor": 0.8,
+                "difficulty_factor": 0.1
+              }
+            }
+          ]
+        },
+        {
+          "delay_seconds": 3.3,
+          "pattern": "lane",
+          "enemy": "chaser",
+          "lanes": [-180.0, 0.0, 180.0],
+          "y_offset": 20.0,
+          "movement": {
+            "type": "chaser",
+            "speed": 180.0,
+            "turn_rate": 120.0,
+            "turn_rate_scale": 20.0
+          }
+        },
+        {
+          "delay_seconds": 3.1,
+          "pattern": "lane",
+          "enemy": "grunt",
+          "lanes": [-360.0, 0.0, 360.0],
+          "movement": {
+            "type": "straight",
+            "speed": 165.0,
+            "scale_with_difficulty": true
+          },
+          "powerup_lane_index": 1,
+          "powerup": "invincibility"
+        }
+      ]
+    },
+    {
+      "name": "Vortex Advance",
+      "waves": [
+        {
+          "delay_seconds": 3.5,
+          "pattern": "lane",
+          "enemy": "sine",
+          "lanes": [-360.0, -180.0, 0.0, 180.0, 360.0],
+          "y_offset": 60.0,
+          "movement": {
+            "type": "sine",
+            "speed": 135.0,
+            "amplitude": 160.0,
+            "frequency": 1.5,
+            "frequency_gain": 0.2
+          },
+          "powerup_lane_index": 2,
+          "powerup": "rapid"
+        },
+        {
+          "delay_seconds": 3.0,
+          "pattern": "lane",
+          "enemy": "zig_zag",
+          "lanes": [-360.0, -120.0, 120.0, 360.0],
+          "y_offset": 40.0,
+          "movement": {
+            "type": "zig_zag",
+            "speed": 165.0,
+            "horizontal_speed": 220.0
+          }
+        },
+        {
+          "delay_seconds": 3.6,
+          "pattern": "fixed",
+          "enemies": [
+            {
+              "enemy": "tank",
+              "position": { "x": -260.0, "y": 540.0 },
+              "movement": {
+                "type": "tank",
+                "speed": 95.0,
+                "base_factor": 0.85,
+                "difficulty_factor": 0.12
+              },
+              "powerup": "shield"
+            },
+            {
+              "enemy": "chaser",
+              "position": { "x": 0.0, "y": 500.0 },
+              "movement": {
+                "type": "chaser",
+                "speed": 190.0,
+                "turn_rate": 135.0,
+                "turn_rate_scale": 25.0
+              }
+            },
+            {
+              "enemy": "tank",
+              "position": { "x": 260.0, "y": 540.0 },
+              "movement": {
+                "type": "tank",
+                "speed": 95.0,
+                "base_factor": 0.85,
+                "difficulty_factor": 0.12
+              }
+            }
+          ]
+        },
+        {
+          "delay_seconds": 2.9,
+          "pattern": "lane",
+          "enemy": "grunt",
+          "lanes": [-320.0, -160.0, 0.0, 160.0, 320.0],
+          "movement": {
+            "type": "straight",
+            "speed": 180.0,
+            "scale_with_difficulty": true
+          },
+          "powerup_lane_index": 0,
+          "powerup": "spread"
+        },
+        {
+          "delay_seconds": 3.2,
+          "pattern": "lane",
+          "enemy": "chaser",
+          "lanes": [-200.0, -100.0, 0.0, 100.0, 200.0],
+          "movement": {
+            "type": "chaser",
+            "speed": 190.0,
+            "turn_rate": 130.0,
+            "turn_rate_scale": 30.0
+          },
+          "powerup_lane_index": 4,
+          "powerup": "health"
+        },
+        {
+          "delay_seconds": 3.0,
+          "pattern": "fixed",
+          "enemies": [
+            {
+              "enemy": "tank",
+              "position": { "x": -180.0, "y": 520.0 },
+              "movement": {
+                "type": "tank",
+                "speed": 100.0,
+                "base_factor": 0.9,
+                "difficulty_factor": 0.15
+              }
+            },
+            {
+              "enemy": "zig_zag",
+              "position": { "x": 0.0, "y": 550.0 },
+              "movement": {
+                "type": "zig_zag",
+                "speed": 170.0,
+                "horizontal_speed": 240.0,
+                "direction": 1.0
+              },
+              "powerup": "invincibility"
+            },
+            {
+              "enemy": "tank",
+              "position": { "x": 180.0, "y": 520.0 },
+              "movement": {
+                "type": "tank",
+                "speed": 100.0,
+                "base_factor": 0.9,
+                "difficulty_factor": 0.15
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Siege Breaker",
+      "waves": [
+        {
+          "delay_seconds": 3.4,
+          "pattern": "lane",
+          "enemy": "grunt",
+          "lanes": [-360.0, -180.0, 0.0, 180.0, 360.0],
+          "movement": {
+            "type": "straight",
+            "speed": 190.0,
+            "scale_with_difficulty": true
+          },
+          "powerup_lane_index": 2,
+          "powerup": "rapid"
+        },
+        {
+          "delay_seconds": 3.0,
+          "pattern": "lane",
+          "enemy": "zig_zag",
+          "lanes": [-400.0, -200.0, 0.0, 200.0, 400.0],
+          "movement": {
+            "type": "zig_zag",
+            "speed": 180.0,
+            "horizontal_speed": 260.0
+          },
+          "powerup_lane_index": 1,
+          "powerup": "spread"
+        },
+        {
+          "delay_seconds": 2.8,
+          "pattern": "fixed",
+          "enemies": [
+            {
+              "enemy": "chaser",
+              "position": { "x": -220.0, "y": 540.0 },
+              "movement": {
+                "type": "chaser",
+                "speed": 210.0,
+                "turn_rate": 140.0,
+                "turn_rate_scale": 30.0
+              }
+            },
+            {
+              "enemy": "tank",
+              "position": { "x": 0.0, "y": 560.0 },
+              "movement": {
+                "type": "tank",
+                "speed": 105.0,
+                "base_factor": 0.95,
+                "difficulty_factor": 0.18
+              },
+              "powerup": "shield"
+            },
+            {
+              "enemy": "chaser",
+              "position": { "x": 220.0, "y": 540.0 },
+              "movement": {
+                "type": "chaser",
+                "speed": 210.0,
+                "turn_rate": 140.0,
+                "turn_rate_scale": 30.0
+              }
+            }
+          ]
+        },
+        {
+          "delay_seconds": 3.1,
+          "pattern": "lane",
+          "enemy": "sine",
+          "lanes": [-300.0, -150.0, 0.0, 150.0, 300.0],
+          "y_offset": 70.0,
+          "movement": {
+            "type": "sine",
+            "speed": 150.0,
+            "amplitude": 190.0,
+            "frequency": 1.6,
+            "frequency_gain": 0.25
+          },
+          "powerup_lane_index": 2,
+          "powerup": "health"
+        },
+        {
+          "delay_seconds": 2.9,
+          "pattern": "fixed",
+          "enemies": [
+            {
+              "enemy": "tank",
+              "position": { "x": -250.0, "y": 540.0 },
+              "movement": {
+                "type": "tank",
+                "speed": 110.0,
+                "base_factor": 0.95,
+                "difficulty_factor": 0.2
+              }
+            },
+            {
+              "enemy": "tank",
+              "position": { "x": 250.0, "y": 540.0 },
+              "movement": {
+                "type": "tank",
+                "speed": 110.0,
+                "base_factor": 0.95,
+                "difficulty_factor": 0.2
+              },
+              "powerup": "invincibility"
+            }
+          ]
+        },
+        {
+          "delay_seconds": 2.7,
+          "pattern": "lane",
+          "enemy": "chaser",
+          "lanes": [-240.0, -120.0, 0.0, 120.0, 240.0],
+          "movement": {
+            "type": "chaser",
+            "speed": 210.0,
+            "turn_rate": 150.0,
+            "turn_rate_scale": 35.0
+          },
+          "powerup_lane_index": 0,
+          "powerup": "rapid"
+        }
+      ]
+    }
+  ]
+}
